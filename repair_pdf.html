@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Repair PDF — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <a class="panel-back" href="index.html">&larr; Back</a>
+  <div class="panel-titles"><div class="panel-title">Repair PDF</div><div class="panel-desc">Attempt to repair and re-save a corrupted PDF file.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select PDF File</div>
+  <div class="file-drop" id="rp-drop" ondragover="PDFMgr.dov(event,'rp-drop')" ondragleave="PDFMgr.dlv('rp-drop')" ondrop="PDFMgr.ddrop(event,'rp','rp-drop')">
+    <input type="file" accept=".pdf" id="rp-file" onchange="PDFMgr.fchange('rp')"/>
+    <div class="fd-icon">&#128196;</div><div class="fd-text">Choose the PDF to repair</div><div class="fd-sub">Only PDF accepted</div>
+    <div class="fname" id="rp-fname"></div><div class="fmeta" id="rp-fmeta"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Repair Options</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="rp-rewrite" checked> Re-write PDF structure</label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="rp-strip"> Strip unknown objects</label>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="doRepair()">Repair PDF</button>
+  <div class="alert alert-err" id="rp-err"></div>
+  <div class="alert alert-warn show" style="margin-top:10px">Results depend on the level of corruption. Severely damaged files may not be fully recoverable.</div>
+  <div class="prog-wrap" id="rp-prog"><div class="prog-lbl">Repairing...</div><div class="prog-bar"><div class="prog-fill" id="rp-fill"></div></div></div>
+  <div class="result-wrap" id="rp-result"></div>
+</div>
+</div>
+<footer class="site-footer"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function doRepair(){
+  PDFMgr.hideErr('rp');
+  const f=PDFMgr.getFile('rp');if(!f)return PDFMgr.showErr('rp','Please select a PDF.');
+  try{
+    PDFMgr.setProgress('rp',30,'Reading PDF...');
+    const ab=await PDFMgr.readFile(f);
+    const doc=await PDFLib.PDFDocument.load(ab,{ignoreEncryption:true,throwOnInvalidObject:false,updateMetadata:false});
+    PDFMgr.setProgress('rp',70,'Re-writing structure...');
+    const out=await doc.save({useObjectStreams:false});
+    PDFMgr.hideProgress('rp');
+    PDFMgr.showResult('rp',PDFMgr.dlCard(PDFMgr.baseName(f)+'_repaired.pdf',out.byteLength,PDFMgr.makeDlUrl(out,'application/pdf'),'Structure repaired'));
+  }catch(e){PDFMgr.hideProgress('rp');PDFMgr.showErr('rp','Could not repair. File may be too corrupted. '+( e.message||''));}
+}
+</script></body></html>

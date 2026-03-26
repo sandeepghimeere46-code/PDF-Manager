@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DOCX to PDF — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <a class="panel-back" href="index.html">&larr; Back</a>
+  <div class="panel-titles"><div class="panel-title">DOCX to PDF</div><div class="panel-desc">Convert Word documents to PDF or view as a web page.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select Document</div>
+  <div class="file-drop" id="dx-drop" ondragover="PDFMgr.dov(event,'dx-drop')" ondragleave="PDFMgr.dlv('dx-drop')" ondrop="PDFMgr.ddrop(event,'dx','dx-drop')">
+    <input type="file" accept=".docx,.doc" id="dx-file" onchange="PDFMgr.fchange('dx')"/>
+    <div class="fd-icon">&#128196;</div><div class="fd-text">Select a .docx file or drag and drop</div><div class="fd-sub">.docx and .doc accepted</div>
+    <div class="fname" id="dx-fname"></div><div class="fmeta" id="dx-fmeta"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Output Options</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn btn-primary" onclick="toPdf()">Convert and Download PDF</button>
+    <button class="btn btn-secondary" onclick="toWeb()">Read as Web Page</button>
+  </div>
+  <div class="alert alert-err" id="dx-err"></div>
+  <div class="prog-wrap" id="dx-prog"><div class="prog-lbl">Converting...</div><div class="prog-bar"><div class="prog-fill" id="dx-fill"></div></div></div>
+  <div class="result-wrap" id="dx-result"></div>
+  <div id="dx-preview" style="display:none;margin-top:16px;padding:20px;background:#fff;border:1.5px solid var(--br2);border-radius:8px;max-height:480px;overflow-y:auto;font-size:14px;line-height:1.7"></div>
+</div>
+</div>
+<footer class="site-footer"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function getHtml(){
+  const f=PDFMgr.getFile('dx');if(!f){PDFMgr.showErr('dx','Please select a .docx file.');return null;}
+  const ab=await PDFMgr.readFile(f);
+  const res=await mammoth.convertToHtml({arrayBuffer:ab});
+  return res.value;
+}
+async function toPdf(){
+  PDFMgr.hideErr('dx');
+  try{
+    PDFMgr.setProgress('dx',20,'Reading document...');
+    const html=await getHtml();if(!html)return;
+    PDFMgr.setProgress('dx',50,'Building PDF...');
+    const tmp=document.createElement('div');tmp.innerHTML=html;
+    const lines=tmp.innerText.split('\n').filter(l=>l.trim());
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'p',unit:'mm',format:'a4'});
+    doc.setFontSize(11);let y=20;
+    lines.forEach(line=>{
+      if(y>275){doc.addPage();y=20;}
+      doc.splitTextToSize(line,170).forEach(wl=>{if(y>275){doc.addPage();y=20;}doc.text(wl,20,y);y+=6;});
+      y+=2;
+    });
+    PDFMgr.setProgress('dx',88,'Saving...');
+    const out=doc.output('arraybuffer');
+    PDFMgr.hideProgress('dx');
+    PDFMgr.showResult('dx',PDFMgr.dlCard(PDFMgr.baseName(PDFMgr.getFile('dx'))+'.pdf',out.byteLength,PDFMgr.makeDlUrl(new Uint8Array(out),'application/pdf'),'Converted'));
+  }catch(e){PDFMgr.hideProgress('dx');PDFMgr.showErr('dx',e.message||'Failed.');}
+}
+async function toWeb(){
+  PDFMgr.hideErr('dx');
+  try{
+    PDFMgr.setProgress('dx',40,'Converting...');
+    const html=await getHtml();if(!html)return;
+    PDFMgr.hideProgress('dx');
+    const pv=document.getElementById('dx-preview');pv.style.display='block';pv.innerHTML=html;
+  }catch(e){PDFMgr.hideProgress('dx');PDFMgr.showErr('dx',e.message||'Failed.');}
+}
+</script></body></html>

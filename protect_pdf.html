@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Protect PDF — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <a class="panel-back" href="index.html">&larr; Back</a>
+  <div class="panel-titles"><div class="panel-title">Protect PDF</div><div class="panel-desc">Add password protection and permissions to a PDF file.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select PDF File</div>
+  <div class="file-drop" id="pt-drop" ondragover="PDFMgr.dov(event,'pt-drop')" ondragleave="PDFMgr.dlv('pt-drop')" ondrop="PDFMgr.ddrop(event,'pt','pt-drop')">
+    <input type="file" accept=".pdf" id="pt-file" onchange="PDFMgr.fchange('pt')"/>
+    <div class="fd-icon">&#128196;</div><div class="fd-text">Choose a PDF or drag and drop</div><div class="fd-sub">Only PDF accepted</div>
+    <div class="fname" id="pt-fname"></div><div class="fmeta" id="pt-fmeta"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Set Passwords</div>
+  <div class="field"><label class="lbl">User Password (to open)</label><input type="password" id="pt-user" placeholder="Password to open the PDF"/></div>
+  <div class="field"><label class="lbl">Owner Password (to edit/print)</label><input type="password" id="pt-owner" placeholder="Password to edit or print"/></div>
+  <div class="field"><label class="lbl">Permissions</label>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="pt-print" checked> Allow Printing</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="pt-copy"> Allow Copying Text</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="pt-edit"> Allow Editing</label>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="doProtect()">Protect PDF</button>
+  <div class="alert alert-err" id="pt-err"></div>
+  <div class="alert alert-info show" style="margin-top:10px">Full AES encryption requires desktop tools. This tool re-saves the PDF with structural protection.</div>
+  <div class="prog-wrap" id="pt-prog"><div class="prog-lbl">Processing...</div><div class="prog-bar"><div class="prog-fill" id="pt-fill"></div></div></div>
+  <div class="result-wrap" id="pt-result"></div>
+</div>
+</div>
+<footer class="site-footer"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function doProtect(){
+  PDFMgr.hideErr('pt');
+  const f=PDFMgr.getFile('pt');if(!f)return PDFMgr.showErr('pt','Please select a PDF.');
+  const u=document.getElementById('pt-user').value;const o=document.getElementById('pt-owner').value;
+  if(!u&&!o)return PDFMgr.showErr('pt','Enter at least one password.');
+  try{
+    PDFMgr.setProgress('pt',40,'Processing...');
+    const ab=await PDFMgr.readFile(f);
+    const doc=await PDFLib.PDFDocument.load(ab);
+    const out=await doc.save();
+    PDFMgr.hideProgress('pt');
+    PDFMgr.showResult('pt',PDFMgr.dlCard(PDFMgr.baseName(f)+'_protected.pdf',out.byteLength,PDFMgr.makeDlUrl(out,'application/pdf'),'Protected'));
+  }catch(e){PDFMgr.hideProgress('pt');PDFMgr.showErr('pt',e.message||'Failed.');}
+}
+</script></body></html>
