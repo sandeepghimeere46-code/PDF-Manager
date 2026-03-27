@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PDF Merger — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">PDF Merger</div><div class="panel-desc">Combine multiple PDF files into one document in order.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select PDF Files</div>
+  <div class="file-drop" id="merge-drop" ondragover="PDFMgr.dov(event,'merge-drop')" ondragleave="PDFMgr.dlv('merge-drop')" ondrop="onDrop(event)">
+    <input type="file" accept=".pdf" multiple id="merge-file" onchange="addFiles()"/>
+    <div class="fd-icon"></div><div class="fd-text">Choose PDF files or drag and drop</div>
+    <div class="fd-sub">Select multiple files</div>
+  </div>
+  <div class="file-list" id="merge-list"></div>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('merge-file').click()">Add More PDFs</button>
+    <button class="btn btn-danger btn-sm" onclick="clearAll()">Remove All</button>
+  </div>
+</div>
+<div class="card">
+  <button class="btn btn-primary btn-full" onclick="doMerge()">Merge PDFs</button>
+  <div class="alert alert-err" id="merge-err"></div>
+  <div class="prog-wrap" id="merge-prog"><div class="prog-lbl">Merging...</div><div class="prog-bar"><div class="prog-fill" id="merge-fill"></div></div></div>
+  <div class="result-wrap" id="merge-result"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="shared.js"></script>
+<script>
+let mFiles=[];
+function onDrop(e){e.preventDefault();PDFMgr.dlv('merge-drop');Array.from(e.dataTransfer.files).forEach(f=>{if(f.type==='application/pdf')mFiles.push(f);});render();}
+function addFiles(){const el=document.getElementById('merge-file');Array.from(el.files).forEach(f=>mFiles.push(f));el.value='';render();}
+function clearAll(){mFiles=[];render();}
+function remove(i){mFiles.splice(i,1);render();}
+function render(){const el=document.getElementById('merge-list');if(!mFiles.length){el.innerHTML='';return;}
+el.innerHTML=mFiles.map((f,i)=>`<div class="file-row"><span class="file-row-name">${f.name}</span><span class="file-row-meta">${PDFMgr.fmtSize(f.size)}</span><button class="btn-remove" onclick="remove(${i})">Remove</button></div>`).join('');}
+async function doMerge(){
+  PDFMgr.hideErr('merge');
+  if(mFiles.length<2) return PDFMgr.showErr('merge','Please add at least 2 PDF files.');
+  try{
+    const doc=await PDFLib.PDFDocument.create();
+    for(let i=0;i<mFiles.length;i++){
+      PDFMgr.setProgress('merge',Math.round(i/mFiles.length*88),'Merging file '+(i+1)+' of '+mFiles.length+'...');
+      const ab=await PDFMgr.readFile(mFiles[i]);
+      const src=await PDFLib.PDFDocument.load(ab);
+      const pages=await doc.copyPages(src,src.getPageIndices());
+      pages.forEach(p=>doc.addPage(p));
+    }
+    PDFMgr.setProgress('merge',95,'Saving...');
+    const out=await doc.save();
+    PDFMgr.hideProgress('merge');
+    PDFMgr.showResult('merge',PDFMgr.dlCard('merged_output.pdf',out.byteLength,PDFMgr.makeDlUrl(out,'application/pdf'),doc.getPageCount()+' pages total'));
+  }catch(e){PDFMgr.hideProgress('merge');PDFMgr.showErr('merge',e.message||'Failed.');}
+}
+</script></body></html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Split PDF — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">Split PDF</div><div class="panel-desc">Split a PDF into two separate files at a chosen page.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select PDF File</div>
+  <div class="file-drop" id="split-drop" ondragover="PDFMgr.dov(event,'split-drop')" ondragleave="PDFMgr.dlv('split-drop')" ondrop="PDFMgr.ddrop(event,'split','split-drop')">
+    <input type="file" accept=".pdf" id="split-file" onchange="PDFMgr.fchange('split')"/>
+    <div class="fd-icon"></div><div class="fd-text">Choose a PDF file or drag and drop</div>
+    <div class="fd-sub">Only PDF accepted</div>
+    <div class="fname" id="split-fname"></div><div class="fmeta" id="split-fmeta"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Split Point</div>
+  <div class="field"><label class="lbl">Split After Page</label>
+    <input type="number" id="split-after" min="1" value="1"/>
+    <div class="hint">Part 1 = pages 1 to N. Part 2 = pages N+1 to end.</div>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="doSplit()">Split PDF</button>
+  <div class="alert alert-err" id="split-err"></div>
+  <div class="prog-wrap" id="split-prog"><div class="prog-lbl">Processing...</div><div class="prog-bar"><div class="prog-fill" id="split-fill"></div></div></div>
+  <div class="result-wrap" id="split-result"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function doSplit() {
+  PDFMgr.hideErr('split');
+  const f = PDFMgr.getFile('split');
+  if (!f) return PDFMgr.showErr('split','Please select a PDF file.');
+  const after = parseInt(document.getElementById('split-after').value);
+  if (isNaN(after)||after<1) return PDFMgr.showErr('split','Invalid split page.');
+  try {
+    PDFMgr.setProgress('split',20,'Loading...');
+    const ab  = await PDFMgr.readFile(f);
+    const src = await PDFLib.PDFDocument.load(ab);
+    const total = src.getPageCount();
+    if (after>=total) return PDFMgr.showErr('split','Split page must be less than '+total+'.');
+    PDFMgr.setProgress('split',40,'Building Part 1...');
+    const p1 = await PDFLib.PDFDocument.create();
+    const i1=[]; for(let i=0;i<after;i++) i1.push(i);
+    (await p1.copyPages(src,i1)).forEach(p=>p1.addPage(p));
+    PDFMgr.setProgress('split',65,'Building Part 2...');
+    const p2 = await PDFLib.PDFDocument.create();
+    const i2=[]; for(let i=after;i<total;i++) i2.push(i);
+    (await p2.copyPages(src,i2)).forEach(p=>p2.addPage(p));
+    PDFMgr.setProgress('split',88,'Saving...');
+    const o1=await p1.save(), o2=await p2.save();
+    PDFMgr.hideProgress('split');
+    const bn = PDFMgr.baseName(f);
+    PDFMgr.showResult('split',
+      PDFMgr.dlCard(bn+'_part1.pdf',o1.byteLength,PDFMgr.makeDlUrl(o1,'application/pdf'),'Pages 1–'+after) +
+      PDFMgr.dlCard(bn+'_part2.pdf',o2.byteLength,PDFMgr.makeDlUrl(o2,'application/pdf'),'Pages '+(after+1)+'–'+total));
+  } catch(e){PDFMgr.hideProgress('split');PDFMgr.showErr('split',e.message||'Failed.');}
+}
+</script></body></html>

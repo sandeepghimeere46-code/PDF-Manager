@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cut PDF — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">Cut PDF</div><div class="panel-desc">Extract a specific page range from a PDF file.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select PDF File</div>
+  <div class="file-drop" id="cut-drop" ondragover="PDFMgr.dov(event,'cut-drop')" ondragleave="PDFMgr.dlv('cut-drop')" ondrop="PDFMgr.ddrop(event,'cut','cut-drop')">
+    <input type="file" accept=".pdf" id="cut-file" onchange="PDFMgr.fchange('cut')"/>
+    <div class="fd-icon"></div>
+    <div class="fd-text">Choose a PDF file or drag and drop</div>
+    <div class="fd-sub">Only PDF files are accepted</div>
+    <div class="fname" id="cut-fname"></div><div class="fmeta" id="cut-fmeta"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Page Range</div>
+  <div class="row2">
+    <div class="field"><label class="lbl">From Page</label><input type="number" id="cut-from" min="1" value="1"/><div class="hint" id="cut-hint-from">Start page number</div></div>
+    <div class="field"><label class="lbl">To Page</label><input type="number" id="cut-to" min="1" value="1"/><div class="hint" id="cut-hint-to">End page number</div></div>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="doCut()">Cut PDF</button>
+  <div class="alert alert-err" id="cut-err"></div>
+  <div class="prog-wrap" id="cut-prog"><div class="prog-lbl">Processing...</div><div class="prog-bar"><div class="prog-fill" id="cut-fill"></div></div></div>
+  <div class="result-wrap" id="cut-result"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function doCut() {
+  PDFMgr.hideErr('cut');
+  const f = PDFMgr.getFile('cut');
+  if (!f) return PDFMgr.showErr('cut','Please select a PDF file.');
+  const from = parseInt(document.getElementById('cut-from').value);
+  const to   = parseInt(document.getElementById('cut-to').value);
+  if (isNaN(from)||isNaN(to)||from<1||to<from) return PDFMgr.showErr('cut','Invalid range. From must be >= 1 and <= To.');
+  try {
+    PDFMgr.setProgress('cut',30,'Loading PDF...');
+    const ab  = await PDFMgr.readFile(f);
+    const src = await PDFLib.PDFDocument.load(ab);
+    const total = src.getPageCount();
+    document.getElementById('cut-hint-from').textContent = 'Total pages: ' + total;
+    document.getElementById('cut-hint-to').textContent   = 'Total pages: ' + total;
+    if (to > total) return PDFMgr.showErr('cut','PDF only has ' + total + ' pages.');
+    PDFMgr.setProgress('cut',60,'Extracting pages...');
+    const doc = await PDFLib.PDFDocument.create();
+    const idxs = []; for (let i=from-1;i<to;i++) idxs.push(i);
+    const pages = await doc.copyPages(src,idxs);
+    pages.forEach(p => doc.addPage(p));
+    PDFMgr.setProgress('cut',90,'Saving...');
+    const out = await doc.save();
+    PDFMgr.hideProgress('cut');
+    const name = PDFMgr.baseName(f) + '_pages_' + from + '-' + to + '.pdf';
+    PDFMgr.showResult('cut', PDFMgr.dlCard(name, out.byteLength, PDFMgr.makeDlUrl(out,'application/pdf'), idxs.length+' pages'));
+  } catch(e) { PDFMgr.hideProgress('cut'); PDFMgr.showErr('cut', e.message||'Failed to cut PDF.'); }
+}
+</script></body></html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PDF Summarizer — PDF Manager</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.provider-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--br2);color:var(--br7);margin-left:8px;vertical-align:middle;}
+.summary-box{background:#fff;border:1.5px solid var(--br2);border-radius:var(--r);padding:20px;min-height:160px;font-size:14px;line-height:1.8;color:var(--text);white-space:pre-wrap;word-break:break-word;}
+.meta-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
+.meta-item{background:var(--br1);border-radius:6px;padding:8px 14px;font-size:13px;color:var(--textm);}
+.meta-item strong{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--texts);margin-bottom:2px;}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">PDF Manager <span>Open Vision</span></div>
+</header>
+<div class="page-wrap">
+  <div class="panel-header">
+    <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+    <div class="panel-titles">
+      <div class="panel-title">PDF Summarizer <span class="provider-badge" id="prov-badge">AI</span></div>
+      <div class="panel-desc">Generate a concise, structured summary of any PDF using your configured AI provider.</div>
+    </div>
+  </div>
+
+  <div class="alert alert-warn" id="no-api" style="margin-bottom:16px">
+    No API key configured. <a href="settings.html" style="color:var(--warn);font-weight:600">Go to Settings</a> to add your API key before using this tool.
+  </div>
+
+  <div class="card">
+    <div class="card-title">Select PDF File</div>
+    <div class="file-drop" id="sm-drop" ondragover="PDFMgr.dov(event,'sm-drop')" ondragleave="PDFMgr.dlv('sm-drop')" ondrop="PDFMgr.ddrop(event,'sm','sm-drop')">
+      <input type="file" accept=".pdf" id="sm-file" onchange="PDFMgr.fchange('sm')"/>
+      <div class="fd-text">Choose a PDF file or drag and drop</div>
+      <div class="fd-sub">Text is extracted locally in your browser</div>
+      <div class="fname" id="sm-fname"></div>
+      <div class="fmeta" id="sm-fmeta"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Summary Options</div>
+    <div class="row2">
+      <div class="field">
+        <label class="lbl">Summary Length</label>
+        <select id="sm-length">
+          <option value="brief">Brief (2-3 sentences)</option>
+          <option value="short">Short (one paragraph)</option>
+          <option value="medium" selected>Medium (3-5 paragraphs)</option>
+          <option value="detailed">Detailed (comprehensive)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl">Output Language</label>
+        <select id="sm-lang">
+          <option value="English">English</option>
+          <option value="Hindi">Hindi</option>
+          <option value="Spanish">Spanish</option>
+          <option value="French">French</option>
+          <option value="German">German</option>
+          <option value="Arabic">Arabic</option>
+          <option value="Chinese">Chinese</option>
+          <option value="Portuguese">Portuguese</option>
+          <option value="Russian">Russian</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl">Focus Area (optional)</label>
+      <input type="text" id="sm-focus" placeholder="e.g. financial data, legal clauses, technical specifications"/>
+      <div class="hint">Leave blank for a general summary of the entire document.</div>
+    </div>
+    <div class="field">
+      <label class="lbl">Extra Output</label>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="sm-keypoints" checked> Include key points list</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="sm-action"> Include action items (if any)</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="sm-keywords"> Include keywords</label>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" id="sm-btn" onclick="doSummarize()">Summarize PDF</button>
+    <div class="alert alert-err" id="sm-err"></div>
+    <div class="prog-wrap" id="sm-prog">
+      <div class="prog-lbl" id="sm-plbl">Extracting text...</div>
+      <div class="prog-bar"><div class="prog-fill" id="sm-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="card" id="sm-result-card" style="display:none">
+    <div class="card-title">Summary</div>
+    <div class="meta-row" id="sm-meta"></div>
+    <div class="summary-box" id="sm-output" aria-live="polite"></div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="copySummary()">Copy Summary</button>
+      <button class="btn btn-primary btn-sm" onclick="saveSummaryTxt()">Save as TXT</button>
+      <button class="btn btn-success btn-sm" onclick="saveSummaryPdf()">Save as PDF</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="shared.js"></script>
+<script>
+let lastSummary = '';
+
+function initProvider() {
+  const p   = PDFMgr.getSetting('active_provider', 'gemini');
+  const key = PDFMgr.getSetting('apikey_' + p, '');
+  document.getElementById('prov-badge').textContent = p.charAt(0).toUpperCase() + p.slice(1);
+  const warn = document.getElementById('no-api');
+  if (key) { warn.style.display = 'none'; } else { warn.classList.add('show'); document.getElementById('sm-btn').disabled = true; }
+}
+
+async function extractText(f) {
+  await PDFMgr.loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const ab  = await PDFMgr.readFile(f);
+  const src = await PDFLib.PDFDocument.load(ab);
+  const total = src.getPageCount();
+  const pd  = await window.pdfjsLib.getDocument({ data: new Uint8Array(ab) }).promise;
+  let text = '';
+  const cap = Math.min(total, 25);
+  for (let i = 1; i <= cap; i++) {
+    const pg = await pd.getPage(i);
+    const ct = await pg.getTextContent();
+    text += ct.items.map(x => x.str).join(' ') + '\n\n';
+  }
+  return { text: text.trim().slice(0, 14000), total, cap };
+}
+
+async function callAI(prompt) {
+  const p   = PDFMgr.getSetting('active_provider', 'gemini');
+  const key = PDFMgr.getSetting('apikey_' + p, '');
+  const m   = PDFMgr.getSetting('model_' + p, '');
+  if (p === 'gemini') {
+    const model = m || 'gemini-1.5-flash';
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{parts:[{text:prompt}]}] })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || 'Gemini error');
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  }
+  if (p === 'openrouter') {
+    const model = m || 'openai/gpt-4o-mini';
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://pdfmanager.openvision.app'},
+      body: JSON.stringify({ model, messages:[{role:'user',content:prompt}] })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || 'OpenRouter error');
+    return d.choices?.[0]?.message?.content || '';
+  }
+  if (p === 'brock') {
+    const ep  = PDFMgr.getSetting('endpoint_brock', 'https://api.brock.ai/v1');
+    const model = m || 'brock-large';
+    const r = await fetch(ep+'/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body: JSON.stringify({ model, messages:[{role:'user',content:prompt}] })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || 'Brock error');
+    return d.choices?.[0]?.message?.content || '';
+  }
+  throw new Error('Unknown provider');
+}
+
+async function doSummarize() {
+  PDFMgr.hideErr('sm');
+  const f = PDFMgr.getFile('sm');
+  if (!f) return PDFMgr.showErr('sm', 'Please select a PDF file.');
+  const length   = document.getElementById('sm-length').value;
+  const lang     = document.getElementById('sm-lang').value;
+  const focus    = document.getElementById('sm-focus').value.trim();
+  const keypts   = document.getElementById('sm-keypoints').checked;
+  const action   = document.getElementById('sm-action').checked;
+  const keywords = document.getElementById('sm-keywords').checked;
+  try {
+    PDFMgr.setProgress('sm', 15, 'Extracting text from PDF...');
+    const { text, total, cap } = await extractText(f);
+    if (!text) return PDFMgr.showErr('sm', 'No readable text found. The PDF may be scanned. Use OCR Extract Text first.');
+    PDFMgr.setProgress('sm', 50, 'Sending to AI...');
+    const lengthDesc = {
+      brief: 'Write a very brief summary of 2-3 sentences only.',
+      short: 'Write a short summary in one paragraph.',
+      medium: 'Write a medium-length summary of 3 to 5 paragraphs covering the main points.',
+      detailed: 'Write a comprehensive and detailed summary covering all major sections and points.'
+    }[length];
+    const focusNote = focus ? `Pay special attention to: ${focus}.` : '';
+    const extras = [];
+    if (keypts)   extras.push('After the summary, add a section titled "Key Points" with a numbered list of the most important points.');
+    if (action)   extras.push('If the document contains any action items or tasks, add a section titled "Action Items".');
+    if (keywords) extras.push('Add a section titled "Keywords" listing the most important terms from the document.');
+    const prompt = `You are an expert document analyst. Summarize the following document content in ${lang}.
+
+${lengthDesc} ${focusNote}
+
+${extras.join(' ')}
+
+Return only the summary and any requested sections. Do not include explanations or preamble.
+
+Document content:
+---
+${text}
+---`;
+    const result = await callAI(prompt);
+    lastSummary = result;
+    PDFMgr.hideProgress('sm');
+    // Meta info
+    document.getElementById('sm-meta').innerHTML =
+      `<div class="meta-item"><strong>File</strong>${f.name}</div>`+
+      `<div class="meta-item"><strong>Pages</strong>${total}${cap<total?' (first '+cap+' analyzed)':''}</div>`+
+      `<div class="meta-item"><strong>Length</strong>${length.charAt(0).toUpperCase()+length.slice(1)}</div>`+
+      `<div class="meta-item"><strong>Language</strong>${lang}</div>`;
+    document.getElementById('sm-output').textContent = result;
+    document.getElementById('sm-result-card').style.display = 'block';
+    document.getElementById('sm-result-card').scrollIntoView({ behavior: 'smooth' });
+    PDFMgr.playSuccess();
+  } catch(e) {
+    PDFMgr.hideProgress('sm');
+    PDFMgr.showErr('sm', e.message || 'Summarization failed. Check your API key in Settings.');
+  }
+}
+
+function copySummary() {
+  navigator.clipboard.writeText(lastSummary).then(() => alert('Summary copied to clipboard.'));
+}
+function saveSummaryTxt() {
+  const b = new Blob([lastSummary], { type: 'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+  a.download = PDFMgr.getFile('sm') ? PDFMgr.baseName(PDFMgr.getFile('sm')) + '_summary.txt' : 'summary.txt';
+  a.click();
+}
+async function saveSummaryPdf() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('PDF Summary', 20, 20);
+  doc.setFontSize(11); doc.setFont('helvetica','normal');
+  const lines = doc.splitTextToSize(lastSummary, 170);
+  let y = 32;
+  lines.forEach(l => { if (y > 280) { doc.addPage(); y = 20; } doc.text(l, 20, y); y += 6; });
+  const out = doc.output('arraybuffer');
+  const a = document.createElement('a');
+  a.href = PDFMgr.makeDlUrl(new Uint8Array(out), 'application/pdf');
+  a.download = PDFMgr.getFile('sm') ? PDFMgr.baseName(PDFMgr.getFile('sm')) + '_summary.pdf' : 'summary.pdf';
+  a.click();
+}
+
+document.addEventListener('DOMContentLoaded', initProvider);
+</script>
+</body>
+</html>

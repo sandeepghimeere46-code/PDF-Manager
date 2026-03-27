@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>File Info — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">File Info</div><div class="panel-desc">View detailed metadata and information about a PDF file.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select PDF File</div>
+  <div class="file-drop" id="fi-drop" ondragover="PDFMgr.dov(event,'fi-drop')" ondragleave="PDFMgr.dlv('fi-drop')" ondrop="PDFMgr.ddrop(event,'fi','fi-drop');doInfo()">
+    <input type="file" accept=".pdf" id="fi-file" onchange="PDFMgr.fchange('fi');doInfo()"/>
+    <div class="fd-icon"></div><div class="fd-text">Choose a PDF to inspect</div><div class="fd-sub">Automatically shows info when selected</div>
+    <div class="fname" id="fi-fname"></div><div class="fmeta" id="fi-fmeta"></div>
+  </div>
+  <div class="alert alert-err" id="fi-err"></div>
+</div>
+<div class="card" id="fi-card" style="display:none">
+  <div class="card-title">Document Information</div>
+  <div class="info-grid" id="fi-grid"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function doInfo(){
+  const f=PDFMgr.getFile('fi');if(!f)return;
+  PDFMgr.hideErr('fi');
+  try{
+    const ab=await PDFMgr.readFile(f);
+    const doc=await PDFLib.PDFDocument.load(ab,{ignoreEncryption:true});
+    const total=doc.getPageCount();
+    const fp=doc.getPage(0);const{width,height}=fp.getSize();
+    const items=[
+      ['File Name',f.name],['File Size',PDFMgr.fmtSize(f.size)],['Page Count',total],
+      ['Page Size',width.toFixed(0)+' x '+height.toFixed(0)+' pt'],
+      ['Title',doc.getTitle()||'—'],['Author',doc.getAuthor()||'—'],
+      ['Subject',doc.getSubject()||'—'],['Creator',doc.getCreator()||'—'],
+      ['Producer',doc.getProducer()||'—'],
+      ['Created',doc.getCreationDate()?doc.getCreationDate().toLocaleDateString():'—'],
+      ['Modified',doc.getModificationDate()?doc.getModificationDate().toLocaleDateString():'—'],
+      ['File Type','PDF'],
+    ];
+    document.getElementById('fi-grid').innerHTML=items.map(([k,v])=>`<div class="info-item"><div class="info-label">${k}</div><div class="info-value">${v}</div></div>`).join('');
+    document.getElementById('fi-card').style.display='block';
+  }catch(e){PDFMgr.showErr('fi',e.message||'Could not read PDF info.');}
+}
+</script></body></html>

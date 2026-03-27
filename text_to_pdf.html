@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Text to PDF — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">Text to PDF</div><div class="panel-desc">Type or paste text and generate a PDF. Use [pb] for page breaks.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Content</div>
+  <div class="field"><label class="lbl">Enter Your Text</label>
+    <textarea id="txt" oninput="previewPages()" placeholder="Enter your text here. Use [pb] or --pb-- to start a new page."></textarea>
+    <div class="hint">Use [pb] or --pb-- to insert a page break between pages.</div>
+  </div>
+  <div id="page-preview" style="margin-top:8px;font-size:12px;color:var(--texts)"></div>
+</div>
+<div class="card">
+  <div class="card-title">Formatting</div>
+  <div class="row3">
+    <div class="field"><label class="lbl">Text Color</label>
+      <select id="tc"><option value="#000000">Black</option><option value="#1a237e">Dark Blue</option><option value="#1b5e20">Dark Green</option><option value="#b71c1c">Dark Red</option><option value="#4a148c">Purple</option></select>
+    </div>
+    <div class="field"><label class="lbl">Background</label>
+      <select id="bg"><option value="#ffffff">White</option><option value="#fffde7">Light Yellow</option><option value="#e8f5e9">Light Green</option><option value="#e3f2fd">Light Blue</option><option value="#000000">Black</option></select>
+    </div>
+    <div class="field"><label class="lbl">Font Size (pt)</label><input type="number" id="fs" value="12" min="6" max="72"/></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label class="lbl">Margin (mm)</label><input type="number" id="mg" value="20" min="5" max="50"/></div>
+    <div class="field"><label class="lbl">Line Spacing</label><select id="ls"><option value="1">Single</option><option value="1.5" selected>1.5x</option><option value="2">Double</option></select></div>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="doGenerate()">Generate PDF</button>
+  <div class="alert alert-err" id="txt-err"></div>
+  <div class="result-wrap" id="txt-result"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="shared.js"></script>
+<script>
+function previewPages(){const t=document.getElementById('txt').value;const n=t.split(/\[pb\]|--pb--/gi).filter(p=>p.trim()).length;document.getElementById('page-preview').textContent=n>1?n+' pages detected':'';}
+function hexToRgb(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g,b];}
+async function doGenerate(){
+  PDFMgr.hideErr('txt');
+  const text=document.getElementById('txt').value.trim();
+  if(!text)return PDFMgr.showErr('txt','Please enter some text.');
+  const tc=hexToRgb(document.getElementById('tc').value);
+  const bg=hexToRgb(document.getElementById('bg').value);
+  const fs=parseInt(document.getElementById('fs').value)||12;
+  const mg=parseInt(document.getElementById('mg').value)||20;
+  const ls=parseFloat(document.getElementById('ls').value)||1.5;
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'p',unit:'mm',format:'a4'});
+    const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();
+    const uw=pw-mg*2,lh=fs*0.352778*ls;
+    const parts=text.split(/\[pb\]|--pb--/gi);
+    parts.forEach((part,pi)=>{
+      if(pi>0)doc.addPage();
+      doc.setFillColor(...bg);doc.rect(0,0,pw,ph,'F');
+      doc.setFontSize(fs);doc.setTextColor(...tc);
+      let y=mg;
+      part.split('\n').forEach(line=>{
+        doc.splitTextToSize(line||' ',uw).forEach(wl=>{
+          if(y>ph-mg){doc.addPage();doc.setFillColor(...bg);doc.rect(0,0,pw,ph,'F');doc.setFontSize(fs);doc.setTextColor(...tc);y=mg;}
+          doc.text(wl,mg,y);y+=lh;
+        });
+      });
+    });
+    const out=doc.output('arraybuffer');
+    PDFMgr.showResult('txt',PDFMgr.dlCard('text_document.pdf',out.byteLength,PDFMgr.makeDlUrl(new Uint8Array(out),'application/pdf'),parts.length+' page(s)'));
+  }catch(e){PDFMgr.showErr('txt',e.message||'Failed.');}
+}
+</script></body></html>

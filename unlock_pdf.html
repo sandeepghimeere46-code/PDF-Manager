@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Remove Password — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">Remove PDF Password</div><div class="panel-desc">Remove password protection from an encrypted PDF file.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select Encrypted PDF</div>
+  <div class="file-drop" id="ul-drop" ondragover="PDFMgr.dov(event,'ul-drop')" ondragleave="PDFMgr.dlv('ul-drop')" ondrop="PDFMgr.ddrop(event,'ul','ul-drop')">
+    <input type="file" accept=".pdf" id="ul-file" onchange="PDFMgr.fchange('ul')"/>
+    <div class="fd-icon"></div><div class="fd-text">Choose the encrypted PDF</div><div class="fd-sub">Only PDF accepted</div>
+    <div class="fname" id="ul-fname"></div><div class="fmeta" id="ul-fmeta"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Password</div>
+  <div class="field"><label class="lbl">PDF Password</label><input type="password" id="ul-pass" placeholder="Enter the PDF password"/><div class="hint">Leave blank to try without a password.</div></div>
+  <button class="btn btn-primary btn-full" onclick="doUnlock()">Unlock PDF</button>
+  <div class="alert alert-err" id="ul-err"></div>
+  <div class="alert alert-warn show" style="margin-top:10px">Only unlock PDFs you own or have permission to modify.</div>
+  <div class="prog-wrap" id="ul-prog"><div class="prog-lbl">Unlocking...</div><div class="prog-bar"><div class="prog-fill" id="ul-fill"></div></div></div>
+  <div class="result-wrap" id="ul-result"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function doUnlock(){
+  PDFMgr.hideErr('ul');
+  const f=PDFMgr.getFile('ul');if(!f)return PDFMgr.showErr('ul','Please select a PDF.');
+  const pass=document.getElementById('ul-pass').value;
+  try{
+    PDFMgr.setProgress('ul',40,'Decrypting...');
+    const ab=await PDFMgr.readFile(f);
+    const doc=await PDFLib.PDFDocument.load(ab,{password:pass});
+    PDFMgr.setProgress('ul',80,'Saving unlocked PDF...');
+    const out=await doc.save();
+    PDFMgr.hideProgress('ul');
+    PDFMgr.showResult('ul',PDFMgr.dlCard(PDFMgr.baseName(f)+'_unlocked.pdf',out.byteLength,PDFMgr.makeDlUrl(out,'application/pdf'),'Password removed'));
+  }catch(e){PDFMgr.hideProgress('ul');PDFMgr.showErr('ul',e.message&&e.message.includes('password')?'Incorrect password or file is not encrypted.':e.message||'Failed.');}
+}
+</script></body></html>

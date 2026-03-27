@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Image to PDF — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">Image to PDF</div><div class="panel-desc">Combine one or more images into a single PDF document.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select Images</div>
+  <div class="file-drop" id="i2p-drop" ondragover="PDFMgr.dov(event,'i2p-drop')" ondragleave="PDFMgr.dlv('i2p-drop')" ondrop="onDrop(event)">
+    <input type="file" accept="image/*" multiple id="i2p-file" onchange="addImgs()"/>
+    <div class="fd-icon"></div><div class="fd-text">Select PNG, JPEG or JPG images</div><div class="fd-sub">Multiple files allowed</div>
+  </div>
+  <div class="file-list" id="i2p-list"></div>
+  <div style="display:flex;gap:10px;margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="document.getElementById('i2p-file').click()">Add More</button><button class="btn btn-danger btn-sm" onclick="clearImgs()">Clear All</button></div>
+</div>
+<div class="card">
+  <div class="card-title">Options</div>
+  <div class="row2">
+    <div class="field"><label class="lbl">Page Size</label><select id="i2p-size"><option value="a4">A4</option><option value="letter">Letter</option><option value="fit">Fit to Image</option></select></div>
+    <div class="field"><label class="lbl">Orientation</label><select id="i2p-orient"><option value="portrait">Portrait</option><option value="landscape">Landscape</option><option value="auto">Auto per image</option></select></div>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="doConvert()">Convert to PDF</button>
+  <div class="alert alert-err" id="i2p-err"></div>
+  <div class="prog-wrap" id="i2p-prog"><div class="prog-lbl">Building PDF...</div><div class="prog-bar"><div class="prog-fill" id="i2p-fill"></div></div></div>
+  <div class="result-wrap" id="i2p-result"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="shared.js"></script>
+<script>
+let imgs=[];
+function onDrop(e){e.preventDefault();PDFMgr.dlv('i2p-drop');Array.from(e.dataTransfer.files).forEach(f=>{if(f.type.startsWith('image/'))imgs.push(f);});render();}
+function addImgs(){Array.from(document.getElementById('i2p-file').files).forEach(f=>imgs.push(f));document.getElementById('i2p-file').value='';render();}
+function clearImgs(){imgs=[];render();}
+function removeImg(i){imgs.splice(i,1);render();}
+function render(){document.getElementById('i2p-list').innerHTML=imgs.map((f,i)=>`<div class="file-row"><span class="file-row-name">${f.name}</span><span class="file-row-meta">${PDFMgr.fmtSize(f.size)}</span><button class="btn-remove" onclick="removeImg(${i})">Remove</button></div>`).join('');}
+function loadImg(src){return new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src=src;});}
+async function doConvert(){
+  PDFMgr.hideErr('i2p');
+  if(!imgs.length)return PDFMgr.showErr('i2p','Please select at least one image.');
+  const sizeOpt=document.getElementById('i2p-size').value;
+  const orient=document.getElementById('i2p-orient').value;
+  try{
+    const {jsPDF}=window.jspdf;let doc=null;
+    for(let i=0;i<imgs.length;i++){
+      PDFMgr.setProgress('i2p',10+Math.round(i/imgs.length*85),'Processing image '+(i+1)+'...');
+      const url=URL.createObjectURL(imgs[i]);
+      const img=await loadImg(url);
+      const iw=img.naturalWidth,ih=img.naturalHeight;
+      const isLand=iw>ih;
+      const o=orient==='auto'?(isLand?'l':'p'):(orient==='landscape'?'l':'p');
+      const fmt=sizeOpt==='fit'?[iw*0.264583,ih*0.264583]:(sizeOpt==='a4'?'a4':'letter');
+      if(!doc){doc=new jsPDF({orientation:o,unit:'mm',format:fmt});}else{doc.addPage(fmt,o);}
+      const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();
+      let rw=pw,rh=(ih/iw)*pw;if(rh>ph){rh=ph;rw=(iw/ih)*ph;}
+      doc.addImage(img,imgs[i].type==='image/png'?'PNG':'JPEG',(pw-rw)/2,(ph-rh)/2,rw,rh);
+      URL.revokeObjectURL(url);
+    }
+    const out=doc.output('arraybuffer');PDFMgr.hideProgress('i2p');
+    PDFMgr.showResult('i2p',PDFMgr.dlCard('images_combined.pdf',out.byteLength,PDFMgr.makeDlUrl(new Uint8Array(out),'application/pdf'),imgs.length+' image(s)'));
+  }catch(e){PDFMgr.hideProgress('i2p');PDFMgr.showErr('i2p',e.message||'Failed.');}
+}
+</script></body></html>

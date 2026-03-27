@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OCR — PDF Manager</title><link rel="stylesheet" href="shared.css"/></head><body>
+<header class="site-header"><div class="brand">PDF Manager <span>Open Vision</span></div></header>
+<div class="page-wrap">
+<div class="panel-header">
+  <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+  <div class="panel-titles"><div class="panel-title">OCR — Extract Text</div><div class="panel-desc">Recognize and extract text from scanned PDFs or images.</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Select File</div>
+  <div class="file-drop" id="ocr-drop" ondragover="PDFMgr.dov(event,'ocr-drop')" ondragleave="PDFMgr.dlv('ocr-drop')" ondrop="PDFMgr.ddrop(event,'ocr','ocr-drop')">
+    <input type="file" accept="image/*,.pdf" id="ocr-file" onchange="PDFMgr.fchange('ocr')"/>
+    <div class="fd-icon"></div><div class="fd-text">Choose an image or PDF</div><div class="fd-sub">PNG, JPEG, JPG, BMP, WebP, PDF</div>
+    <div class="fname" id="ocr-fname"></div><div class="fmeta" id="ocr-fmeta"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">OCR Options</div>
+  <div class="field"><label class="lbl">Language</label>
+    <select id="ocr-lang">
+      <option value="eng">English</option><option value="hin">Hindi</option><option value="spa">Spanish</option>
+      <option value="fra">French</option><option value="deu">German</option><option value="chi_sim">Chinese (Simplified)</option>
+      <option value="ara">Arabic</option><option value="por">Portuguese</option><option value="rus">Russian</option><option value="jpn">Japanese</option>
+    </select>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="doOcr()">Start OCR</button>
+  <div class="alert alert-err" id="ocr-err"></div>
+  <div class="prog-wrap" id="ocr-prog"><div class="prog-lbl" id="ocr-plbl">Initializing OCR engine...</div><div class="prog-bar"><div class="prog-fill" id="ocr-fill"></div></div></div>
+</div>
+<div class="card" id="ocr-out-card" style="display:none">
+  <div class="card-title">Extracted Text</div>
+  <textarea id="ocr-out" style="width:100%;min-height:200px" readonly placeholder="Extracted text appears here..."></textarea>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+    <button class="btn btn-secondary btn-sm" onclick="copyOcr()">Copy Text</button>
+    <button class="btn btn-primary btn-sm" onclick="saveTxt()">Save as TXT</button>
+    <button class="btn btn-success btn-sm" onclick="savePdf()">Save as PDF</button>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="shared.js"></script>
+<script>
+async function doOcr(){
+  PDFMgr.hideErr('ocr');
+  const f=PDFMgr.getFile('ocr');if(!f)return PDFMgr.showErr('ocr','Please select a file.');
+  const lang=document.getElementById('ocr-lang').value;
+  try{
+    if(!window.Tesseract)await PDFMgr.loadScript('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js');
+    PDFMgr.setProgress('ocr',5,'Loading OCR engine...');
+    let imgSrc;
+    if(f.type==='application/pdf'){
+      await PDFMgr.loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const ab=await PDFMgr.readFile(f);
+      const pd=await window.pdfjsLib.getDocument({data:new Uint8Array(ab)}).promise;
+      const page=await pd.getPage(1);
+      const vp=page.getViewport({scale:2});
+      const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;
+      await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+      imgSrc=cv.toDataURL('image/png');
+    }else{imgSrc=URL.createObjectURL(f);}
+    document.getElementById('ocr-plbl').textContent='Recognizing text...';
+    const res=await Tesseract.recognize(imgSrc,lang,{logger:m=>{if(m.status==='recognizing text')PDFMgr.setProgress('ocr',10+Math.round(m.progress*85));}});
+    PDFMgr.hideProgress('ocr');
+    document.getElementById('ocr-out').value=res.data.text;
+    document.getElementById('ocr-out-card').style.display='block';
+  }catch(e){PDFMgr.hideProgress('ocr');PDFMgr.showErr('ocr',e.message||'OCR failed.');}
+}
+function copyOcr(){navigator.clipboard.writeText(document.getElementById('ocr-out').value).then(()=>alert('Copied!'));}
+function saveTxt(){const b=new Blob([document.getElementById('ocr-out').value],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ocr_output.txt';a.click();}
+async function savePdf(){const {jsPDF}=window.jspdf;const doc=new jsPDF();doc.setFontSize(11);const lines=doc.splitTextToSize(document.getElementById('ocr-out').value,170);let y=20;lines.forEach(l=>{if(y>280){doc.addPage();y=20;}doc.text(l,20,y);y+=7;});const out=doc.output('arraybuffer');const a=document.createElement('a');a.href=PDFMgr.makeDlUrl(new Uint8Array(out),'application/pdf');a.download='ocr_output.pdf';a.click();}
+</script></body></html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Settings — PDF Manager</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.provider-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--br2);
+  margin-bottom: 20px;
+  gap: 0;
+}
+.ptab {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--textm);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all .16s;
+  user-select: none;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: 'Source Sans 3', sans-serif;
+}
+.ptab:hover { color: var(--br6); }
+.ptab.active { color: var(--br6); border-bottom-color: var(--br6); font-weight: 600; }
+.provider-panel { display: none; }
+.provider-panel.active { display: block; }
+.api-status {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+.api-status.set   { background: #d1fae5; color: #065f46; }
+.api-status.unset { background: var(--br1); color: var(--texts); }
+.provider-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.provider-logo {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 20px;
+  color: var(--br7);
+}
+.get-api-row {
+  display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap;
+}
+.saved-providers {
+  margin-top: 20px;
+}
+.saved-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--br1);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.saved-item-name { flex: 1; font-size: 14px; font-weight: 500; color: var(--textm); }
+.saved-item-key  { font-size: 12px; color: var(--texts); font-family: monospace; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">PDF Manager <span>Open Vision</span></div>
+</header>
+
+<div class="page-wrap">
+  <div class="panel-header">
+    <button class="panel-back" onclick="PDFMgr.goBack()">&larr; Back to Tools</button>
+    <div class="panel-titles">
+      <div class="panel-title">API Settings</div>
+      <div class="panel-desc">Configure AI provider API keys for PDF Translator and PDF AI tools.</div>
+    </div>
+  </div>
+
+  <!-- Saved Status -->
+  <div class="card" id="status-card">
+    <div class="card-title">Configured Providers</div>
+    <div id="saved-status">Checking saved keys...</div>
+  </div>
+
+  <!-- Provider Setup -->
+  <div class="card">
+    <div class="card-title">Add / Update API Key</div>
+
+    <div class="provider-tabs">
+      <button class="ptab active" onclick="switchProvider('gemini')">Gemini</button>
+      <button class="ptab" onclick="switchProvider('openrouter')">OpenRouter</button>
+      <button class="ptab" onclick="switchProvider('brock')">Brock API</button>
+    </div>
+
+    <!-- Gemini -->
+    <div class="provider-panel active" id="pnl-gemini">
+      <div class="provider-header">
+        <div class="provider-logo">Gemini</div>
+        <span class="api-status" id="status-gemini">Not set</span>
+      </div>
+      <p style="font-size:13px;color:var(--texts);margin-bottom:14px;line-height:1.5">
+        Google Gemini provides powerful AI capabilities for translation and document analysis.
+        Use the Gemini API key from Google AI Studio.
+      </p>
+      <div class="field">
+        <label class="lbl">Gemini API Key</label>
+        <input type="password" id="key-gemini" placeholder="AIza..."/>
+        <div class="hint">Your API key is stored locally in your browser only.</div>
+      </div>
+      <div class="field">
+        <label class="lbl">Model</label>
+        <select id="model-gemini">
+          <option value="gemini-1.5-flash">gemini-1.5-flash (Fast)</option>
+          <option value="gemini-1.5-pro">gemini-1.5-pro (Powerful)</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash (Latest)</option>
+        </select>
+      </div>
+      <div class="get-api-row">
+        <a class="btn btn-secondary btn-sm" href="https://aistudio.google.com/app/apikey" target="_blank">Get API Key</a>
+        <button class="btn btn-primary btn-sm" onclick="saveKey('gemini')">Save</button>
+        <button class="btn btn-sm" style="background:var(--err);color:#fff" onclick="clearKey('gemini')">Clear</button>
+      </div>
+      <div class="alert alert-ok" id="save-ok-gemini">Gemini API key saved successfully.</div>
+      <div class="alert alert-err" id="save-err-gemini"></div>
+    </div>
+
+    <!-- OpenRouter -->
+    <div class="provider-panel" id="pnl-openrouter">
+      <div class="provider-header">
+        <div class="provider-logo">OpenRouter</div>
+        <span class="api-status" id="status-openrouter">Not set</span>
+      </div>
+      <p style="font-size:13px;color:var(--texts);margin-bottom:14px;line-height:1.5">
+        OpenRouter provides access to many AI models including GPT-4, Claude, Llama, and more
+        through a unified API.
+      </p>
+      <div class="field">
+        <label class="lbl">OpenRouter API Key</label>
+        <input type="password" id="key-openrouter" placeholder="sk-or-..."/>
+        <div class="hint">Your API key is stored locally in your browser only.</div>
+      </div>
+      <div class="field">
+        <label class="lbl">Model</label>
+        <select id="model-openrouter">
+          <option value="openai/gpt-4o-mini">GPT-4o Mini (Fast)</option>
+          <option value="openai/gpt-4o">GPT-4o (Powerful)</option>
+          <option value="anthropic/claude-3-haiku">Claude 3 Haiku (Fast)</option>
+          <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+          <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Free)</option>
+          <option value="google/gemini-flash-1.5">Gemini Flash 1.5</option>
+          <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
+        </select>
+      </div>
+      <div class="get-api-row">
+        <a class="btn btn-secondary btn-sm" href="https://openrouter.ai/keys" target="_blank">Get API Key</a>
+        <button class="btn btn-primary btn-sm" onclick="saveKey('openrouter')">Save</button>
+        <button class="btn btn-sm" style="background:var(--err);color:#fff" onclick="clearKey('openrouter')">Clear</button>
+      </div>
+      <div class="alert alert-ok" id="save-ok-openrouter">OpenRouter API key saved successfully.</div>
+      <div class="alert alert-err" id="save-err-openrouter"></div>
+    </div>
+
+    <!-- Brock -->
+    <div class="provider-panel" id="pnl-brock">
+      <div class="provider-header">
+        <div class="provider-logo">Brock API</div>
+        <span class="api-status" id="status-brock">Not set</span>
+      </div>
+      <p style="font-size:13px;color:var(--texts);margin-bottom:14px;line-height:1.5">
+        Brock API provides access to AI capabilities with a simple REST interface.
+        Enter your Brock API endpoint and key below.
+      </p>
+      <div class="field">
+        <label class="lbl">Brock API Key</label>
+        <input type="password" id="key-brock" placeholder="bk-..."/>
+        <div class="hint">Your API key is stored locally in your browser only.</div>
+      </div>
+      <div class="field">
+        <label class="lbl">API Endpoint (optional)</label>
+        <input type="text" id="endpoint-brock" placeholder="https://api.brock.ai/v1"/>
+      </div>
+      <div class="field">
+        <label class="lbl">Model</label>
+        <input type="text" id="model-brock" placeholder="e.g. brock-large"/>
+      </div>
+      <div class="get-api-row">
+        <a class="btn btn-secondary btn-sm" href="https://brock.ai" target="_blank">Get API Key</a>
+        <button class="btn btn-primary btn-sm" onclick="saveKey('brock')">Save</button>
+        <button class="btn btn-sm" style="background:var(--err);color:#fff" onclick="clearKey('brock')">Clear</button>
+      </div>
+      <div class="alert alert-ok" id="save-ok-brock">Brock API key saved successfully.</div>
+      <div class="alert alert-err" id="save-err-brock"></div>
+    </div>
+  </div>
+
+  <!-- Active provider selection -->
+  <div class="card">
+    <div class="card-title">Active Provider</div>
+    <div class="field">
+      <label class="lbl">AI tools will use this provider</label>
+      <select id="active-provider" onchange="setActiveProvider(this.value)">
+        <option value="gemini">Gemini</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="brock">Brock API</option>
+      </select>
+    </div>
+    <div class="hint">This selection applies to PDF Translator and PDF AI Assistant.</div>
+  </div>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+const providers = ['gemini','openrouter','brock'];
+
+function switchProvider(id) {
+  document.querySelectorAll('.ptab').forEach((t,i) => {
+    const ids = ['gemini','openrouter','brock'];
+    t.classList.toggle('active', ids[i] === id);
+  });
+  document.querySelectorAll('.provider-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('pnl-' + id).classList.add('active');
+}
+
+function updateStatuses() {
+  providers.forEach(p => {
+    const key = PDFMgr.getSetting('apikey_' + p, '');
+    const el  = document.getElementById('status-' + p);
+    if (el) {
+      el.textContent = key ? 'Configured' : 'Not set';
+      el.className   = 'api-status ' + (key ? 'set' : 'unset');
+    }
+    const inp = document.getElementById('key-' + p);
+    if (inp && key) inp.value = key;
+    const model = PDFMgr.getSetting('model_' + p, '');
+    const msel  = document.getElementById('model-' + p);
+    if (msel && model) {
+      [...msel.options].forEach(o => { if (o.value === model) o.selected = true; });
+    }
+    const ep = PDFMgr.getSetting('endpoint_' + p, '');
+    const epi = document.getElementById('endpoint-' + p);
+    if (epi && ep) epi.value = ep;
+  });
+  // Saved status block
+  const lines = providers.map(p => {
+    const key = PDFMgr.getSetting('apikey_' + p, '');
+    return `<div class="saved-item">
+      <span class="saved-item-name">${p.charAt(0).toUpperCase()+p.slice(1)}</span>
+      <span class="api-status ${key?'set':'unset'}">${key ? 'Configured' : 'Not set'}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('saved-status').innerHTML = lines;
+  // Active provider
+  const active = PDFMgr.getSetting('active_provider', 'gemini');
+  const apSel  = document.getElementById('active-provider');
+  [...apSel.options].forEach(o => { if (o.value === active) o.selected = true; });
+}
+
+function saveKey(p) {
+  const key = document.getElementById('key-' + p).value.trim();
+  if (!key) {
+    showMsg(p, false, 'Please enter an API key.');
+    return;
+  }
+  PDFMgr.setSetting('apikey_' + p, key);
+  // Save model
+  const msel = document.getElementById('model-' + p);
+  if (msel) PDFMgr.setSetting('model_' + p, msel.value);
+  // Save endpoint (brock)
+  const epi = document.getElementById('endpoint-' + p);
+  if (epi) PDFMgr.setSetting('endpoint_' + p, epi.value.trim());
+  updateStatuses();
+  showMsg(p, true, '');
+}
+
+function clearKey(p) {
+  PDFMgr.setSetting('apikey_' + p, '');
+  const inp = document.getElementById('key-' + p);
+  if (inp) inp.value = '';
+  updateStatuses();
+}
+
+function setActiveProvider(v) {
+  PDFMgr.setSetting('active_provider', v);
+}
+
+function showMsg(p, ok, msg) {
+  const okEl  = document.getElementById('save-ok-' + p);
+  const errEl = document.getElementById('save-err-' + p);
+  if (ok) {
+    okEl.classList.add('show');
+    setTimeout(() => okEl.classList.remove('show'), 3500);
+  } else {
+    errEl.textContent = msg;
+    errEl.classList.add('show');
+    setTimeout(() => errEl.classList.remove('show'), 4000);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', updateStatuses);
+</script>
+</body>
+</html>

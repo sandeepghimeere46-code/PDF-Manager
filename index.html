@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PDF Manager — Open Vision</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.home-hero{text-align:center;padding:34px 0 26px;}
+.home-hero-title{font-family:'Libre Baskerville',serif;font-size:30px;color:var(--br7);}
+.home-hero-sub{font-size:14px;color:var(--texts);margin-top:7px;}
+.top-bar{display:flex;gap:10px;margin-bottom:26px;align-items:center;}
+.search-wrap{flex:1;}
+.search-wrap input{font-size:14px;height:44px;background:var(--cream);border:1.5px solid var(--br3);}
+.search-wrap input:focus{border-color:var(--br5);}
+.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--texts);margin:24px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--br2);}
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:11px;margin-bottom:4px;}
+.tool-card{background:var(--cream);border:1.5px solid var(--br2);border-radius:var(--r);padding:16px 15px;cursor:pointer;text-decoration:none;display:block;transition:all .17s;box-shadow:var(--sh);}
+.tool-card:hover{border-color:var(--br4);box-shadow:0 4px 20px rgba(74,43,15,.14);transform:translateY(-2px);}
+.tool-card:focus{outline:2px solid var(--br5);outline-offset:2px;}
+.tool-card.hidden{display:none;}
+.tc-abbr{width:34px;height:34px;background:var(--br1);border:1px solid var(--br2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--br6);margin-bottom:10px;font-weight:700;font-family:'Libre Baskerville',serif;}
+.tc-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.tc-desc{font-size:12px;color:var(--texts);line-height:1.4;}
+.badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;padding:2px 7px;border-radius:99px;margin-top:7px;margin-right:3px;}
+.badge-ai{background:var(--br2);color:var(--br7);}
+.badge-new{background:#d1fae5;color:#065f46;}
+.no-results{text-align:center;padding:48px 0;color:var(--texts);font-size:14px;display:none;}
+.no-results.show{display:block;}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">PDF Manager <span>Open Vision</span></div>
+  <div style="flex:1"></div>
+  <a href="settings.html" class="btn btn-secondary btn-sm">Settings</a>
+</header>
+<div class="page-wrap">
+  <div class="home-hero">
+    <div class="home-hero-title">PDF Manager</div>
+    <div class="home-hero-sub">Client-side. Private. Free. All tools run in your browser.</div>
+  </div>
+  <div class="top-bar">
+    <div class="search-wrap">
+      <input type="search" id="search" placeholder="Search tools..." aria-label="Search tools" oninput="doFilter(this.value)" autocomplete="off"/>
+    </div>
+    <a href="settings.html" class="btn btn-secondary btn-sm">Settings</a>
+  </div>
+  <div id="sections">
+    <div class="section-label" id="sec-edit">Edit and Organize</div>
+    <div class="tool-grid" id="grid-edit">
+      <a class="tool-card" href="cut_pdf.html" data-n="cut pdf extract page range"><div class="tc-abbr">CU</div><div class="tc-name">Cut PDF</div><div class="tc-desc">Extract a specific page range from a PDF.</div></a>
+      <a class="tool-card" href="split_pdf.html" data-n="split pdf two parts divide"><div class="tc-abbr">SP</div><div class="tc-name">Split PDF</div><div class="tc-desc">Split a PDF into two separate files.</div></a>
+      <a class="tool-card" href="merge_pdf.html" data-n="merge pdf combine join multiple"><div class="tc-abbr">MG</div><div class="tc-name">PDF Merger</div><div class="tc-desc">Combine multiple PDFs into one document.</div></a>
+      <a class="tool-card" href="rotate_pdf.html" data-n="rotate pdf pages flip turn"><div class="tc-abbr">RT</div><div class="tc-name">Rotate PDF</div><div class="tc-desc">Rotate all or specific pages in a PDF.</div></a>
+      <a class="tool-card" href="compress_pdf.html" data-n="compress reduce size pdf image"><div class="tc-abbr">CZ</div><div class="tc-name">Compress</div><div class="tc-desc">Reduce PDF and image file sizes.</div></a>
+    </div>
+    <div class="section-label" id="sec-convert">Convert</div>
+    <div class="tool-grid" id="grid-convert">
+      <a class="tool-card" href="docx_to_pdf.html" data-n="docx word to pdf convert"><div class="tc-abbr">DX</div><div class="tc-name">DOCX to PDF</div><div class="tc-desc">Convert Word documents to PDF format.</div></a>
+      <a class="tool-card" href="pdf_to_image.html" data-n="pdf to image png jpeg pages"><div class="tc-abbr">PI</div><div class="tc-name">PDF to Image</div><div class="tc-desc">Export each PDF page as PNG or JPEG.</div></a>
+      <a class="tool-card" href="image_to_pdf.html" data-n="image to pdf png jpeg convert"><div class="tc-abbr">IP</div><div class="tc-name">Image to PDF</div><div class="tc-desc">Combine images into a single PDF.</div></a>
+      <a class="tool-card" href="text_to_pdf.html" data-n="text to pdf type write create"><div class="tc-abbr">TX</div><div class="tc-name">Text to PDF</div><div class="tc-desc">Type or paste text and generate a PDF.</div></a>
+    </div>
+    <div class="section-label" id="sec-security">Security</div>
+    <div class="tool-grid" id="grid-security">
+      <a class="tool-card" href="unlock_pdf.html" data-n="unlock remove password pdf decrypt"><div class="tc-abbr">UL</div><div class="tc-name">Remove Password</div><div class="tc-desc">Remove password protection from a PDF.</div></a>
+      <a class="tool-card" href="protect_pdf.html" data-n="protect password pdf encrypt secure"><div class="tc-abbr">PR</div><div class="tc-name">Protect PDF</div><div class="tc-desc">Add password and permissions to a PDF.</div></a>
+    </div>
+    <div class="section-label" id="sec-advanced">Advanced</div>
+    <div class="tool-grid" id="grid-advanced">
+      <a class="tool-card" href="ocr_pdf.html" data-n="ocr extract text scan image recognition"><div class="tc-abbr">OC</div><div class="tc-name">OCR Extract Text</div><div class="tc-desc">Recognize text in scanned PDFs or images.</div></a>
+      <a class="tool-card" href="repair_pdf.html" data-n="repair fix corrupt broken pdf"><div class="tc-abbr">FX</div><div class="tc-name">Repair PDF</div><div class="tc-desc">Attempt to repair a corrupted PDF file.</div></a>
+      <a class="tool-card" href="file_info.html" data-n="file info metadata pages size pdf details"><div class="tc-abbr">IN</div><div class="tc-name">File Info</div><div class="tc-desc">View metadata, page count, and document details.</div></a>
+    </div>
+    <div class="section-label" id="sec-ai">AI-Powered Tools</div>
+    <div class="tool-grid" id="grid-ai">
+      <a class="tool-card" href="pdf_summarizer.html" data-n="pdf summarizer summary ai shorten">
+        <div class="tc-abbr">SU</div><div class="tc-name">PDF Summarizer</div>
+        <div class="tc-desc">Generate a concise summary of any PDF using AI.</div>
+        <span class="badge badge-ai">AI</span><span class="badge badge-new">New</span>
+      </a>
+      <a class="tool-card" href="pdf_translator.html" data-n="translate pdf language ai">
+        <div class="tc-abbr">TR</div><div class="tc-name">PDF Translator</div>
+        <div class="tc-desc">Translate PDF content into another language using AI.</div>
+        <span class="badge badge-ai">AI</span>
+      </a>
+      <a class="tool-card" href="pdf_ai.html" data-n="pdf ai chat ask question summarize analyze">
+        <div class="tc-abbr">AI</div><div class="tc-name">PDF AI Assistant</div>
+        <div class="tc-desc">Ask questions, summarize, and analyze PDFs with AI.</div>
+        <span class="badge badge-ai">AI</span>
+      </a>
+    </div>
+    <div class="section-label" id="sec-legal">Legal and Policies</div>
+    <div class="tool-grid" id="grid-legal">
+      <a class="tool-card" href="privacy_policy.html" data-n="privacy policy read legal"><div class="tc-abbr">PP</div><div class="tc-name">Privacy Policy</div><div class="tc-desc">Read our full Privacy Policy.</div></a>
+      <a class="tool-card" href="terms.html" data-n="terms conditions legal read"><div class="tc-abbr">TC</div><div class="tc-name">Terms and Conditions</div><div class="tc-desc">Read our Terms and Conditions.</div></a>
+      <a class="tool-card" href="accessibility.html" data-n="accessibility statement read inclusive"><div class="tc-abbr">AC</div><div class="tc-name">Accessibility Statement</div><div class="tc-desc">Read our Accessibility Statement.</div></a>
+    </div>
+  </div>
+  <div class="no-results" id="no-results">No tools found matching your search.</div>
+</div>
+<footer class="site-footer"></footer>
+<script src="shared.js"></script>
+<script>
+function doFilter(q){
+  q=q.toLowerCase().trim();let any=false;
+  document.querySelectorAll('.tool-card').forEach(c=>{
+    const n=(c.dataset.n||'').toLowerCase()+' '+(c.querySelector('.tc-name')?.textContent||'').toLowerCase();
+    const show=!q||n.includes(q);c.classList.toggle('hidden',!show);if(show)any=true;
+  });
+  document.querySelectorAll('.section-label').forEach(sec=>{
+    const g=sec.nextElementSibling;if(!g)return;
+    const vis=[...g.querySelectorAll('.tool-card')].some(c=>!c.classList.contains('hidden'));
+    sec.style.display=vis?'':'none';g.style.display=vis?'':'none';
+  });
+  document.getElementById('no-results').classList.toggle('show',!any);
+}
+</script>
+</body>
+</html>
